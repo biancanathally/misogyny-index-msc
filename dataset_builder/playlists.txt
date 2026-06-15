@@ -1,0 +1,21 @@
+# ── Playlists para coleta do dataset ──────────────────────────
+# Formato: playlist_id,genre
+# ID da URL
+# Ex: https://open.spotify.com/playlist/37i9dQZF1DX7nJFKMfHwvp → 37i9dQZF1DX7nJFKMfHwvp
+#
+# Priorizar playlists com muitos seguidores e curadoria editorial
+
+# ── Brega-funk ───────────────────────────────────────────────
+# IDs das playlists de brega-funk:
+
+3ee2FIwwxzcGbsLEiaoCxQ,brega_funk
+
+# ── Brega ────────────────────────────────────────────────────
+# IDs das playlists de brega:
+
+7dEmQz4jiaBxwtG5KEmuhI,brega
+
+# ── Mangue beat ──────────────────────────────────────────────
+# IDs das playlists de mangue beat:
+
+3qkIPFdqfteS2KrJjLffNn,mangue_beat

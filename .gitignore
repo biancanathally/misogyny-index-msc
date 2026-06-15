@@ -216,3 +216,29 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Custom ignores for this project
+
+# ── Dados pesados (não versionar) ────────────────
+data/raw/dataset.db
+data/raw/*.jsonl.gz
+data/raw/*.csv
+models/
+*.h5
+*.pt
+*.bin
+
+# ── Credenciais ──────────────────────────────────
+.cache
+.env
+*.env
+
+# ── Exports e resultados temporários ─────────────
+dataset_builder/export/
+results/*.png
+results/*.pdf
+
+# ── macOS ────────────────────────────────────────
+.DS_Store
+
+dataset_builder/dataset.db

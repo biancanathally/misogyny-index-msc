@@ -1,0 +1,28 @@
+# ── Coleta de dados ──────────────────────────────
+spotipy>=2.24.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+rapidfuzz>=3.6.0
+lyricsgenius>=3.0.0
+
+# ── Processamento de texto ───────────────────────
+spacy>=3.7.0
+nltk>=3.8.0
+
+# ── Machine Learning ─────────────────────────────
+transformers>=4.40.0
+torch>=2.2.0
+scikit-learn>=1.4.0
+gensim>=4.3.0
+
+# ── Análise e visualização ───────────────────────
+pandas>=2.2.0
+numpy>=1.26.0
+scipy>=1.12.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# ── Notebooks ────────────────────────────────────
+jupyter>=1.0.0
+ipykernel>=6.29.0
+tqdm>=4.66.0
