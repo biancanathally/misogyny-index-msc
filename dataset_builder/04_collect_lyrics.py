@@ -2,23 +2,15 @@
 04_collect_lyrics.py — Coleta letras para as músicas que ainda não têm no banco.
 
 Fontes (em ordem de prioridade):
-    1. Vagalume API  (precisa de API key: https://auth.vagalume.com.br)
-    2. Letras.mus.br (scraping — sem API key)
+    1. Letras.mus.br  (scraping — sem API key)
+    2. Genius API      (fallback — precisa de token)
 
 Pré-requisitos:
-    pip install requests beautifulsoup4 rapidfuzz
+    pip install requests beautifulsoup4 rapidfuzz lyricsgenius
 
 Uso:
-    # Definir a API key do Vagalume:
-    export VAGALUME_API_KEY='sua_api_key'
-
-    # Coletar letras para todas as músicas sem letra:
     python 04_collect_lyrics.py
-
-    # Coletar para um gênero específico:
     python 04_collect_lyrics.py --genre brega_funk
-
-    # Limitar o número de músicas (para teste):
     python 04_collect_lyrics.py --limit 10
 """
 import argparse
@@ -28,11 +20,10 @@ import sys
 import time
 import re
 import unicodedata
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-# DB_PATH = os.path.join(os.path.dirname(__file__), "dataset.db")
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "dataset.db")
 
 try:
@@ -40,63 +31,25 @@ try:
     from bs4 import BeautifulSoup
     from rapidfuzz import fuzz
 except ImportError:
-    print("Erro: instale as dependências com:")
-    print("  pip install requests beautifulsoup4 rapidfuzz")
+    print("Erro: pip install requests beautifulsoup4 rapidfuzz lyricsgenius")
     sys.exit(1)
 
 
 def normalize_text(text):
-    """Remove acentos, lowercase, e caracteres não alfanuméricos."""
     text = unicodedata.normalize("NFKD", text)
     text = text.encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^a-z0-9 ]", "", text.lower()).strip()
 
 
-# ══════════════════════════════════════════════════════════════
-#  FONTE 1: Vagalume API
-# ══════════════════════════════════════════════════════════════
-def fetch_vagalume(artist_name, song_title, api_key):
-    """Busca letra no Vagalume. Retorna (text, match_score) ou (None, 0)."""
-    url = "https://api.vagalume.com.br/search.php"
-    params = {
-        "art":    artist_name,
-        "mus":    song_title,
-        "apikey": api_key,
-    }
-    try:
-        resp = requests.get(url, params=params, timeout=10)
-        data = resp.json()
-    except Exception:
-        return None, 0.0
-
-    if data.get("type") != "exact" and data.get("type") != "aprox":
-        return None, 0.0
-
-    mus = data.get("mus")
-    if not mus or len(mus) == 0:
-        return None, 0.0
-
-    text = mus[0].get("text", "")
-    if not text:
-        return None, 0.0
-
-    # Calcular score de matching
-    found_title = mus[0].get("name", "")
-    score = fuzz.token_sort_ratio(normalize_text(song_title), normalize_text(found_title)) / 100
-    return text, score
-
-
-# ══════════════════════════════════════════════════════════════
-#  FONTE 2: Letras.mus.br (scraping)
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  FONTE 1: Letras.mus.br (principal)
+# ==============================================================
 def slugify(text):
-    """Converte 'Chico Science' → 'chico-science'."""
     text = normalize_text(text)
     return re.sub(r"\s+", "-", text)
 
 
 def fetch_letras(artist_name, song_title):
-    """Busca letra no Letras.mus.br via scraping. Retorna (text, match_score) ou (None, 0)."""
     slug_artist = slugify(artist_name)
     slug_song   = slugify(song_title)
     url = f"https://www.letras.mus.br/{slug_artist}/{slug_song}/"
@@ -114,14 +67,12 @@ def fetch_letras(artist_name, song_title):
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # Letras.mus.br usa a classe 'lyric-original' ou div com data de letras
     lyric_div = soup.find("div", class_="lyric-original")
     if not lyric_div:
         lyric_div = soup.find("div", class_="cnt-letra")
     if not lyric_div:
         return None, 0.0
 
-    # Extrair texto preservando quebras de linha
     paragraphs = lyric_div.find_all("p")
     if paragraphs:
         lines = []
@@ -139,55 +90,108 @@ def fetch_letras(artist_name, song_title):
     if len(text) < 20:
         return None, 0.0
 
-    # Verificar se o título na página confere
     title_tag = soup.find("h1")
     page_title = title_tag.get_text().strip() if title_tag else ""
     score = fuzz.token_sort_ratio(normalize_text(song_title), normalize_text(page_title)) / 100
 
-    return text, max(score, 0.7)  # se chegou na URL certa, score mínimo é 0.7
+    return text, max(score, 0.7)
 
 
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  FONTE 2: Genius (fallback)
+# ==============================================================
+_genius_client = None
+
+def get_genius_client():
+    global _genius_client
+    if _genius_client is not None:
+        return _genius_client
+
+    token = os.environ.get("GENIUS_ACCESS_TOKEN", "")
+    if not token:
+        return None
+
+    try:
+        import lyricsgenius
+        # _genius_client = lyricsgenius.Genius(
+        #     token, verbose=False, timeout=15, retries=2,
+        #     remove_section_headers=True,
+        # )
+        _genius_client = lyricsgenius.Genius(token)
+        return _genius_client
+    except ImportError:
+        print("  lyricsgenius nao instalado — pip install lyricsgenius")
+        return None
+
+
+def fetch_genius(artist_name, song_title):
+    genius = get_genius_client()
+    if genius is None:
+        return None, 0.0
+
+    try:
+        song = genius.search_song(song_title, artist_name)
+    except Exception:
+        return None, 0.0
+
+    if not song or not song.lyrics:
+        return None, 0.0
+
+    text = song.lyrics.strip()
+    lines = text.split("\n")
+    if lines and lines[0].lower().endswith("lyrics"):
+        lines = lines[1:]
+    while lines and (re.match(r"^\d*Embed$", lines[-1].strip()) or lines[-1].strip() == ""):
+        lines.pop()
+
+    text = "\n".join(lines).strip()
+    if len(text) < 20:
+        return None, 0.0
+
+    found_title = song.title if song.title else ""
+    score = fuzz.token_sort_ratio(normalize_text(song_title), normalize_text(found_title)) / 100
+    return text, max(score, 0.6)
+
+
+# ==============================================================
 #  ORQUESTRADOR
-# ══════════════════════════════════════════════════════════════
-def collect_lyrics_for_song(artist_name, song_title, vagalume_key):
-    """Tenta coletar a letra de múltiplas fontes."""
-
-    # Tentar Vagalume primeiro (se tiver API key)
-    if vagalume_key:
-        text, score = fetch_vagalume(artist_name, song_title, vagalume_key)
-        if text and score >= 0.6:
-            return text, "vagalume", score
-
-    # Fallback: Letras.mus.br
+# ==============================================================
+def collect_lyrics_for_song(artist_name, song_title):
+    # 1. Letras.mus.br (principal)
     text, score = fetch_letras(artist_name, song_title)
     if text and score >= 0.6:
         return text, "letras", score
+
+    # 2. Genius (fallback)
+    text, score = fetch_genius(artist_name, song_title)
+    if text and score >= 0.6:
+        return text, "genius", score
 
     return None, None, 0.0
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Coleta letras de músicas")
-    parser.add_argument("--genre", help="Filtrar por gênero", default=None)
-    parser.add_argument("--limit", type=int, help="Limitar número de músicas", default=None)
-    parser.add_argument("--min-score", type=float, help="Score mínimo de matching", default=0.6)
+    parser = argparse.ArgumentParser(description="Coleta letras de musicas")
+    parser.add_argument("--genre", help="Filtrar por genero", default=None)
+    parser.add_argument("--limit", type=int, help="Limitar numero de musicas", default=None)
+    parser.add_argument("--min-score", type=float, help="Score minimo de matching", default=0.6)
     args = parser.parse_args()
 
-    vagalume_key = os.environ.get("VAGALUME_API_KEY", "")
-    if not vagalume_key:
-        print("⚠ VAGALUME_API_KEY não definida — usando apenas Letras.mus.br")
+    genius_token = os.environ.get("GENIUS_ACCESS_TOKEN", "")
+    if not genius_token:
+        print("GENIUS_ACCESS_TOKEN nao definida — usando apenas Letras.mus.br")
+    else:
+        print("Genius configurado como fallback")
 
     conn = sqlite3.connect(DB_PATH)
     cur  = conn.cursor()
 
-    # Buscar músicas sem letra
     query = """
         SELECT s.song_id, s.title, a.name
         FROM songs s
         JOIN artists a ON s.artist_id = a.artist_id
         LEFT JOIN lyrics l ON s.song_id = l.song_id
-        WHERE l.text IS NULL
+        WHERE l.song_id IS NULL
     """
     params = []
     if args.genre:
@@ -199,15 +203,15 @@ def main():
         params.append(args.limit)
 
     pending = cur.execute(query, params).fetchall()
-    print(f"Músicas sem letra: {len(pending)}")
+    print(f"\nMusicas sem letra: {len(pending)}\n")
 
-    n_found   = 0
-    n_failed  = 0
+    n_found  = 0
+    n_failed = 0
 
     for i, (song_id, title, artist_name) in enumerate(pending, 1):
         print(f"  [{i}/{len(pending)}] {artist_name} — {title}", end="  ")
 
-        text, source, score = collect_lyrics_for_song(artist_name, title, vagalume_key)
+        text, source, score = collect_lyrics_for_song(artist_name, title)
 
         if text and score >= args.min_score:
             lines = [l for l in text.strip().split("\n") if l.strip()]
@@ -221,27 +225,22 @@ def main():
             conn.commit()
             n_found += 1
             print(f"✓ {source} (score={score:.2f}, {len(words)} palavras)")
+
         else:
-            # Inserir registro sem texto para não tentar de novo
-            cur.execute(
-                "INSERT OR IGNORE INTO lyrics (song_id, source, match_score) VALUES (?,?,?)",
-                (song_id, "not_found", 0.0)
-            )
-            conn.commit()
             n_failed += 1
             print("✗ não encontrada")
 
-        time.sleep(1.0)  # Rate limiting (respeitar os servidores)
 
-    # Resumo
+        time.sleep(1.5)
+
     progress = cur.execute("SELECT * FROM v_progress").fetchall()
     conn.close()
 
-    print(f"\n{'═'*50}")
-    print(f"Encontradas: {n_found}  |  Não encontradas: {n_failed}")
-    print(f"\nProgresso por gênero:")
-    print(f"  {'Gênero':<15} {'Total':>6} {'C/ letra':>9} {'S/ letra':>9} {'%':>6}")
-    print(f"  {'─'*46}")
+    print(f"\n{'='*50}")
+    print(f"Encontradas: {n_found}  |  Nao encontradas: {n_failed}")
+    print(f"\nProgresso por genero:")
+    print(f"  {'Genero':<15} {'Total':>6} {'C/ letra':>9} {'S/ letra':>9} {'%':>6}")
+    print(f"  {'-'*46}")
     for genre, total, with_l, without_l, pct in progress:
         print(f"  {genre:<15} {total:>6} {with_l:>9} {without_l:>9} {pct:>5.1f}%")
 
