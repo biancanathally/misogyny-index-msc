@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS songs (
     song_id             TEXT PRIMARY KEY,      -- Spotify track ID
     title               TEXT NOT NULL,
     artist_id           TEXT NOT NULL,
-    genre               TEXT NOT NULL CHECK(genre IN ('brega_funk','brega','mangue_beat','outro')),
+    genre               TEXT NOT NULL CHECK(genre IN ('brega_funk','brega','manguebeat','outro')),
     year                INTEGER,
     album_name          TEXT,
     spotify_popularity  INTEGER DEFAULT 0,     -- 0-100, atualizado periodicamente

@@ -18,4 +18,4 @@
 # ── Mangue beat ──────────────────────────────────────────────
 # IDs das playlists de mangue beat:
 
-3qkIPFdqfteS2KrJjLffNn,mangue_beat
+3qkIPFdqfteS2KrJjLffNn,manguebeat

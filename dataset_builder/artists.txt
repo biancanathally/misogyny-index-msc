@@ -1,0 +1,24 @@
+# ── Artistas para coleta do dataset ──────────────────────────
+# Formato: nome do artista,genero
+# O script busca no Spotify e coleta a discografia completa
+
+# ── Brega-funk ───────────────────────────────────────────────
+MC Loma,brega_funk
+Shevchenko e Elloco,brega_funk
+DJ Arnaldo,brega_funk
+MC Troia,brega_funk
+Dadá Boladão,brega_funk
+
+# ── Brega ────────────────────────────────────────────────────
+Reginaldo Rossi,brega
+Amado Batista,brega
+Michelle Melo,brega
+Banda Calypso,brega
+Companhia do Calypso,brega
+
+# ── Mangue beat ──────────────────────────────────────────────
+Chico Science,manguebeat
+Nação Zumbi,manguebeat
+Mundo Livre S/A,manguebeat
+Otto,manguebeat
+Siba,manguebeat

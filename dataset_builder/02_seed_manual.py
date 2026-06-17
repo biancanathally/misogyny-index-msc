@@ -43,11 +43,11 @@ SAMPLE_SONGS = [
     ("song_br_005", "Mon Amour",         "artist_michelle",  "brega", 2003, 50, False),
 
     # ── Mangue beat ──────────────────
-    ("song_mb_001", "Da Lama ao Caos",     "artist_csnm",       "mangue_beat", 1994, 70, False),
-    ("song_mb_002", "A Cidade",            "artist_csnm",       "mangue_beat", 1994, 75, False),
-    ("song_mb_003", "Maracatu Atômico",    "artist_csnm",       "mangue_beat", 1996, 72, False),
-    ("song_mb_004", "Quando a Maré Encher","artist_nz",         "mangue_beat", 2000, 45, False),
-    ("song_mb_005", "Livre Iniciativa",    "artist_mundo_livre", "mangue_beat", 1998, 40, False),
+    ("song_mb_001", "Da Lama ao Caos",     "artist_csnm",       "manguebeat", 1994, 70, False),
+    ("song_mb_002", "A Cidade",            "artist_csnm",       "manguebeat", 1994, 75, False),
+    ("song_mb_003", "Maracatu Atômico",    "artist_csnm",       "manguebeat", 1996, 72, False),
+    ("song_mb_004", "Quando a Maré Encher","artist_nz",         "manguebeat", 2000, 45, False),
+    ("song_mb_005", "Livre Iniciativa",    "artist_mundo_livre", "manguebeat", 1998, 40, False),
 ]
 
 # Letras de exemplo (fictícias / resumidas para teste — substitua pelas reais)

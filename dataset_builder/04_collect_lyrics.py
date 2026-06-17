@@ -28,6 +28,9 @@ import sys
 import time
 import re
 import unicodedata
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 # DB_PATH = os.path.join(os.path.dirname(__file__), "dataset.db")
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "dataset.db")
