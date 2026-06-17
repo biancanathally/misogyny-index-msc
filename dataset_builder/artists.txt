@@ -13,7 +13,6 @@ Dadá Boladão,brega_funk
 Reginaldo Rossi,brega
 Amado Batista,brega
 Michelle Melo,brega
-Banda Calypso,brega
 Companhia do Calypso,brega
 
 # ── Mangue beat ──────────────────────────────────────────────
