@@ -5,15 +5,15 @@
 # ── Brega-funk ───────────────────────────────────────────────
 MC Loma,brega_funk
 Shevchenko e Elloco,brega_funk
-DJ Arnaldo,brega_funk
 MC Troia,brega_funk
 Dadá Boladão,brega_funk
+Anderson Neiff,brega_funk
 
 # ── Brega ────────────────────────────────────────────────────
 Reginaldo Rossi,brega
 Amado Batista,brega
 Michelle Melo,brega
-Companhia do Calypso,brega
+Conde Só Brega,brega
 
 # ── Mangue beat ──────────────────────────────────────────────
 Chico Science,manguebeat
@@ -21,3 +21,8 @@ Nação Zumbi,manguebeat
 Mundo Livre S/A,manguebeat
 Otto,manguebeat
 Siba,manguebeat
+Cordel do Fogo Encantado,manguebeat
+
+# remover
+# DJ Arnaldo,brega_funk
+# Companhia do Calypso,brega
