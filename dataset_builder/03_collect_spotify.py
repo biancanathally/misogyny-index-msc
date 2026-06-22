@@ -117,7 +117,131 @@ def insert_track(cur, track, genre, source_type, source_id, source_name):
 
 
 # ==============================================================
-#  MODO 1: Coleta por playlist
+#  MODO 1: Coleta por artista (via search)
+# ==============================================================
+def collect_artist(sp, artist_name, genre, conn):
+    """Coleta a discografia completa de um artista via artist_albums."""
+    cur = conn.cursor()
+    print(f"  Buscando: {artist_name}")
+    source_name = f"artist:{artist_name}"
+
+    # 1. Encontrar o artista
+    from rapidfuzz import fuzz
+    try:
+        r = sp.search(q=artist_name, type="artist", market="BR", limit=5)
+    except Exception as e:
+        print(f"  Erro na busca: {e}")
+        return 0
+
+    artists = r.get("artists", {}).get("items", [])
+    if not artists:
+        print(f"  Artista não encontrado")
+        return 0
+
+    best = max(artists, key=lambda a: fuzz.token_sort_ratio(
+        artist_name.lower(), a.get("name", "").lower()
+    ))
+    
+    artist_id = best["id"]
+    found_name = best["name"]
+    
+    # Isso rejeita artistas quando o nome encontrado no Spotify difere muito
+    score = fuzz.token_sort_ratio(artist_name.lower(), found_name.lower())
+    if score < 80:
+        print(f"  Ignorado: '{found_name}' (score={score}, muito diferente de '{artist_name}')")
+        return 0
+    
+    print(f"  Encontrado: {found_name} (ID: {artist_id})")
+
+    # 2. Buscar todos os álbuns (paginando com limit=10)
+    album_ids = []
+    offset = 0
+    while True:
+        try:
+            result = sp.artist_albums(artist_id, album_type="album,single", limit=10, offset=offset)
+        except Exception as e:
+            print(f"  Erro ao buscar albums (offset={offset}): {e}")
+            break
+
+        items = result.get("items", [])
+        if not items:
+            break
+
+        for album in items:
+            aid = album.get("id")
+            if aid:
+                album_ids.append(aid)
+
+        offset += len(items)
+        if len(items) < 10:
+            break
+        time.sleep(0.5)
+
+    print(f"  Albums/singles: {len(album_ids)}")
+
+    # 3. Buscar faixas de cada álbum e inserir direto
+    n_inserted = 0
+    seen_ids = set()
+
+    for album_id in album_ids:
+        # Pegar info do álbum (nome e data) que já veio no passo 2
+        try:
+            album_info = sp.album(album_id)
+        except Exception:
+            album_info = {}
+
+        album_name = album_info.get("name", "")
+        release_date = album_info.get("release_date", "")
+
+        # Buscar faixas do álbum
+        try:
+            result = sp.album_tracks(album_id, limit=10)
+        except Exception:
+            continue
+
+        while True:
+            for t in result.get("items", []):
+                tid = t.get("id")
+                if not tid or tid in seen_ids:
+                    continue
+                seen_ids.add(tid)
+
+                # Montar objeto compatível com insert_track
+                track = {
+                    "id": tid,
+                    "name": t.get("name", ""),
+                    "artists": t.get("artists", []),
+                    "album": {
+                        "name": album_name,
+                        "release_date": release_date,
+                    },
+                    "duration_ms": t.get("duration_ms", 0),
+                    "explicit": t.get("explicit", False),
+                    "external_urls": t.get("external_urls", {}),
+                    "popularity": 0,
+                }
+
+                if insert_track(cur, track, genre, "artist_albums", artist_id, source_name):
+                    n_inserted += 1
+
+            # Paginar se tiver mais faixas
+            if result.get("next"):
+                try:
+                    result = sp.next(result)
+                except Exception:
+                    break
+            else:
+                break
+
+        time.sleep(0.5)
+
+    conn.commit()
+    print(f"  Faixas unicas: {len(seen_ids)} | Novas inseridas: {n_inserted}")
+    return n_inserted
+
+
+# ==============================================================
+#  MODO 2: Coleta por playlist
 # ==============================================================
 def collect_playlist(sp, playlist_id, genre, conn):
     """Coleta faixas de uma playlist propria."""
@@ -153,69 +277,27 @@ def collect_playlist(sp, playlist_id, genre, conn):
         offset += len(items)
         if len(items) < 100:
             break
-        time.sleep(0.3)
+        time.sleep(2)
 
     conn.commit()
     return n_inserted
 
 
-# ==============================================================
-#  MODO 2: Coleta por artista (via search)
-# ==============================================================
-def collect_artist(sp, artist_name, genre, conn):
-    """Coleta todas as faixas de um artista via busca."""
-    cur = conn.cursor()
-
-    print(f"  Buscando: {artist_name}")
-    source_name = f"artist:{artist_name}"
-
-    n_inserted = 0
-    offset = 0
-    seen_ids = set()
-
-    # Spotify search permite ate offset=1000
-    while offset < 1000:
-        try:
-            results = sp.search(
-                q=f'artist:"{artist_name}"',
-                type="track",
-                market="BR",
-                # limit=50,
-                limit=10,
-                offset=offset
-            )
-        except Exception as e:
-            print(f"  Erro na busca (offset={offset}): {e}")
-            break
-
-        tracks = results.get("tracks", {}).get("items", [])
-        if not tracks:
-            break
-
-        for track in tracks:
-            tid = track.get("id")
-            if not tid or tid in seen_ids:
-                continue
-            seen_ids.add(tid)
-
-            # Verificar se o artista principal bate (search pode trazer feats)
-            track_artist = track.get("artists", [{}])[0].get("name", "")
-            from rapidfuzz import fuzz
-            if fuzz.token_sort_ratio(artist_name.lower(), track_artist.lower()) < 60:
-                continue
-
-            if insert_track(cur, track, genre, "artist_search", artist_name, source_name):
-                n_inserted += 1
-
-        offset += len(tracks)
-        # if len(tracks) < 50:
-        if len(tracks) < 10:
-            break
-        time.sleep(0.3)
-
-    conn.commit()
-    print(f"  Faixas encontradas: {len(seen_ids)} | Novas inseridas: {n_inserted}")
-    return n_inserted
+# def spotify_search_with_retry(sp, **kwargs):
+#     """Faz busca no Spotify com retry automatico em caso de rate limit."""
+#     import spotipy
+#     for attempt in range(3):
+#         try:
+#             return sp.search(**kwargs)
+#         except spotipy.exceptions.SpotifyException as e:
+#             if e.http_status == 429:
+#                 retry_after = int(e.headers.get("Retry-After", 30))
+#                 print(f"\n  Rate limit - esperando {retry_after}s...", end="", flush=True)
+#                 time.sleep(retry_after + 1)
+#                 print(" retomando.", flush=True)
+#             else:
+#                 raise
+#     return None
 
 
 # ==============================================================

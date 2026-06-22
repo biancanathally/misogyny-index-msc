@@ -3,26 +3,55 @@
 # O script busca no Spotify e coleta a discografia completa
 
 # ── Brega-funk ───────────────────────────────────────────────
-MC Loma,brega_funk
 Shevchenko e Elloco,brega_funk
+MC Loma,brega_funk
+MC Loma e As Gêmeas Lacração,brega_funk
 MC Troia,brega_funk
+MC Abalo,brega_funk
+MC Nego da Marcone,brega_funk
 Dadá Boladão,brega_funk
 Anderson Neiff,brega_funk
+Biel XCamoso,brega_funk
+Vitinho Polêmico,brega_funk
 
 # ── Brega ────────────────────────────────────────────────────
 Reginaldo Rossi,brega
-Amado Batista,brega
-Michelle Melo,brega
 Conde Só Brega,brega
+Kelvis Duran,brega
+Banda Sedutora,brega
+Banda Só Brega,brega
+Banda Brega.Com,brega
+Banda Musa,brega
+Banda Torpedo,brega
+Banda Playback,brega
+Banda Bandida,brega
+Banda Metade,brega
+Banda Mancha de Batom,brega
+Banda Boa Toda,brega
+Banda Carícias,brega
+Banda Ovelha Negra,brega
+Banda Sentimentos,brega
+Banda Saíra,brega
+Priscila Senna,brega
+Musa do Calypso,brega
+Carla Alves,brega
+Eduarda Alves,brega
+Anna Catarina,brega
+Lekinho Campos,brega
+Nova Reação,brega
+Tayara Andreza,brega
+Th CDM,brega
+Eduarda Alves,brega
+Raphaela Santos,brega
+Swing do Amor,brega
+Banda A Favorita,brega
+A Favorita,brega
 
-# ── Mangue beat ──────────────────────────────────────────────
+
+# ── Manguebeat ───────────────────────────────────────────────
 Chico Science,manguebeat
 Nação Zumbi,manguebeat
 Mundo Livre S/A,manguebeat
 Otto,manguebeat
 Siba,manguebeat
 Cordel do Fogo Encantado,manguebeat
-
-# remover
-# DJ Arnaldo,brega_funk
-# Companhia do Calypso,brega
