@@ -46,59 +46,6 @@ def normalize_text(text):
 # ==============================================================
 #  FONTE 1: Letras.mus.br (principal)
 # ==============================================================
-# def slugify(text):
-#     text = normalize_text(text)
-#     return re.sub(r"\s+", "-", text)
-
-
-# def fetch_letras(artist_name, song_title):
-#     slug_artist = slugify(artist_name)
-#     slug_song   = slugify(song_title)
-#     url = f"https://www.letras.mus.br/{slug_artist}/{slug_song}/"
-
-#     headers = {
-#         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-#                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-#     }
-#     try:
-#         resp = requests.get(url, headers=headers, timeout=10)
-#         if resp.status_code != 200:
-#             return None, 0.0
-#     except Exception:
-#         return None, 0.0
-
-#     soup = BeautifulSoup(resp.text, "html.parser")
-
-#     lyric_div = soup.find("div", class_="lyric-original")
-#     if not lyric_div:
-#         lyric_div = soup.find("div", class_="cnt-letra")
-#     if not lyric_div:
-#         return None, 0.0
-
-#     paragraphs = lyric_div.find_all("p")
-#     if paragraphs:
-#         lines = []
-#         for p in paragraphs:
-#             for br in p.find_all("br"):
-#                 br.replace_with("\n")
-#             lines.append(p.get_text())
-#         text = "\n\n".join(lines)
-#     else:
-#         for br in lyric_div.find_all("br"):
-#             br.replace_with("\n")
-#         text = lyric_div.get_text()
-
-#     text = text.strip()
-#     if len(text) < 20:
-#         return None, 0.0
-
-#     title_tag = soup.find("h1")
-#     page_title = title_tag.get_text().strip() if title_tag else ""
-#     score = fuzz.token_sort_ratio(normalize_text(song_title), normalize_text(page_title)) / 100
-
-#     return text, max(score, 0.7)
-
-
 def slugify(text):
     """Converte texto para slug de URL do Letras.mus.br."""
     # Trocar / por espaço ANTES de remover caracteres especiais
@@ -407,8 +354,8 @@ def main():
 
     print(f"\n{'='*50}")
     print(f"Encontradas: {n_found}  |  Nao encontradas: {n_failed}")
-    print(f"\nProgresso por genero:")
-    print(f"  {'Genero':<15} {'Total':>6} {'C/ letra':>9} {'S/ letra':>9} {'%':>6}")
+    print(f"\nProgresso por gênero:")
+    print(f"  {'Gênero':<15} {'Total':>6} {'C/ letra':>9} {'S/ letra':>9} {'%':>6}")
     print(f"  {'-'*46}")
     for genre, total, with_l, without_l, pct in progress:
         print(f"  {genre:<15} {total:>6} {with_l:>9} {without_l:>9} {pct:>5.1f}%")

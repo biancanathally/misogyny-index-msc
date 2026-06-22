@@ -24,6 +24,7 @@ import sqlite3
 import os
 import sys
 import time
+import spotipy
 
 # Carregar .env
 from dotenv import load_dotenv
@@ -56,6 +57,30 @@ def get_spotify_client():
         redirect_uri=redirect_uri,
         scope="playlist-read-private"
     ))
+    
+def safe_spotify_call(func, *args, **kwargs):
+    """
+    Executa uma função do Spotipy de forma segura. 
+    Se o limite for atingido (erro 429), pausa o script pelo tempo exato exigido.
+    """
+    for attempt in range(5):  # Tenta até 5 vezes antes de desistir
+        try:
+            return func(*args, **kwargs)
+        except spotipy.exceptions.SpotifyException as e:
+            if e.http_status == 429:
+                # Pega o tempo exigido pelo Spotify e adiciona 2 segundos de margem de segurança
+                retry_after = int(e.headers.get("Retry-After", 15))
+                print(f"\n  [!] Limite atingido. Pausando obrigatoriamente por {retry_after}s...", end="", flush=True)
+                time.sleep(retry_after + 2)
+                print(" Retomando.", flush=True)
+            else:
+                # Se for outro erro (ex: 404, 500), levanta a exceção normalmente
+                raise e
+        except Exception as e:
+             print(f"\n  [!] Erro de conexão: {e}. Tentando novamente em 5s...")
+             time.sleep(5)
+    
+    return None
 
 
 # ==============================================================
@@ -128,7 +153,8 @@ def collect_artist(sp, artist_name, genre, conn):
     # 1. Encontrar o artista
     from rapidfuzz import fuzz
     try:
-        r = sp.search(q=artist_name, type="artist", market="BR", limit=5)
+        # r = sp.search(q=artist_name, type="artist", market="BR", limit=5)
+        r = safe_spotify_call(sp.search, q=artist_name, type="artist", market="BR", limit=5)
     except Exception as e:
         print(f"  Erro na busca: {e}")
         return 0
@@ -158,7 +184,8 @@ def collect_artist(sp, artist_name, genre, conn):
     offset = 0
     while True:
         try:
-            result = sp.artist_albums(artist_id, album_type="album,single", limit=10, offset=offset)
+            # result = sp.artist_albums(artist_id, album_type="album,single", limit=10, offset=offset)
+            result = safe_spotify_call(sp.artist_albums, artist_id, album_type="album,single", limit=10, offset=offset)
         except Exception as e:
             print(f"  Erro ao buscar albums (offset={offset}): {e}")
             break
@@ -175,7 +202,7 @@ def collect_artist(sp, artist_name, genre, conn):
         offset += len(items)
         if len(items) < 10:
             break
-        time.sleep(0.5)
+        time.sleep(2)
 
     print(f"  Albums/singles: {len(album_ids)}")
 
@@ -195,7 +222,8 @@ def collect_artist(sp, artist_name, genre, conn):
 
         # Buscar faixas do álbum
         try:
-            result = sp.album_tracks(album_id, limit=10)
+            # result = sp.album_tracks(album_id, limit=10)
+            result = safe_spotify_call(sp.album_tracks, album_id, limit=10)
         except Exception:
             continue
 
@@ -204,6 +232,10 @@ def collect_artist(sp, artist_name, genre, conn):
                 tid = t.get("id")
                 if not tid or tid in seen_ids:
                     continue
+                
+                if t.get("artists", []) and t["artists"][0].get("id") != artist_id:
+                    continue
+                
                 seen_ids.add(tid)
 
                 # Montar objeto compatível com insert_track
@@ -227,13 +259,14 @@ def collect_artist(sp, artist_name, genre, conn):
             # Paginar se tiver mais faixas
             if result.get("next"):
                 try:
-                    result = sp.next(result)
+                    # result = sp.next(result)
+                    result = safe_spotify_call(sp.next, result)
                 except Exception:
                     break
             else:
                 break
 
-        time.sleep(0.5)
+        time.sleep(2)
 
     conn.commit()
     print(f"  Faixas unicas: {len(seen_ids)} | Novas inseridas: {n_inserted}")
@@ -260,7 +293,8 @@ def collect_playlist(sp, playlist_id, genre, conn):
 
     while True:
         try:
-            results = sp.playlist_tracks(playlist_id, offset=offset, limit=100)
+            # results = sp.playlist_tracks(playlist_id, offset=offset, limit=100)
+            results = safe_spotify_call(sp.playlist_tracks, playlist_id, offset=offset, limit=100)
         except Exception as e:
             print(f"  Erro ao buscar faixas (offset={offset}): {e}")
             break
@@ -283,30 +317,13 @@ def collect_playlist(sp, playlist_id, genre, conn):
     return n_inserted
 
 
-# def spotify_search_with_retry(sp, **kwargs):
-#     """Faz busca no Spotify com retry automatico em caso de rate limit."""
-#     import spotipy
-#     for attempt in range(3):
-#         try:
-#             return sp.search(**kwargs)
-#         except spotipy.exceptions.SpotifyException as e:
-#             if e.http_status == 429:
-#                 retry_after = int(e.headers.get("Retry-After", 30))
-#                 print(f"\n  Rate limit - esperando {retry_after}s...", end="", flush=True)
-#                 time.sleep(retry_after + 1)
-#                 print(" retomando.", flush=True)
-#             else:
-#                 raise
-#     return None
-
-
 # ==============================================================
 #  MAIN
 # ==============================================================
 def show_progress(conn):
     progress = conn.execute("SELECT * FROM v_progress").fetchall()
-    print(f"\nProgresso por genero:")
-    print(f"  {'Genero':<15} {'Total':>6} {'C/ letra':>9} {'S/ letra':>9} {'%':>6}")
+    print(f"\nProgresso por gênero:")
+    print(f"  {'Gênero':<15} {'Total':>6} {'C/ letra':>9} {'S/ letra':>9} {'%':>6}")
     print(f"  {'-'*46}")
     for genre, total, with_l, without_l, pct in progress:
         print(f"  {genre:<15} {total:>6} {with_l:>9} {without_l:>9} {pct:>5.1f}%")
