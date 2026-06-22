@@ -4,7 +4,6 @@
 
 # ── Brega-funk ───────────────────────────────────────────────
 Shevchenko e Elloco,brega_funk
-MC Loma,brega_funk
 MC Loma e As Gêmeas Lacração,brega_funk
 MC Troia,brega_funk
 MC Abalo,brega_funk
