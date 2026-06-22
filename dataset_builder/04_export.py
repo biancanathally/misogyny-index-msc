@@ -32,8 +32,8 @@ from datetime import datetime
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "dataset.db")
 
 FIELDS = [
-    "song_id", "title", "artist_name", "artist_id", "artist_gender",
-    "artist_type", "genre", "year", "decade", "spotify_popularity",
+    "song_id", "title", "artist_name", "artist_id", 
+    "genre", "year", "decade", "spotify_popularity",
     "explicit", "lyrics", "language", "n_words", "n_lines", "lyrics_source"
 ]
 

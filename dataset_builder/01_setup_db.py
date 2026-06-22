@@ -10,7 +10,6 @@ Gera:
 import sqlite3
 import os
 
-# DB_PATH = os.path.join(os.path.dirname(__file__), "/data/raw/dataset.db")
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "dataset.db")
 
 SCHEMA = """
@@ -20,10 +19,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS artists (
     artist_id       TEXT PRIMARY KEY,          -- Spotify artist ID (ex: "4dpARuHxo51G3z768sgnrY")
     name            TEXT NOT NULL,
-    gender          TEXT CHECK(gender IN ('M','F','Mixed','Unknown')) DEFAULT 'Unknown',
-    type            TEXT CHECK(type IN ('Solo','Group')) DEFAULT 'Solo',
-    city            TEXT,                      -- cidade de origem
-    state           TEXT DEFAULT 'PE',
+    followers       INTEGER,
+    popularity      INTEGER,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -46,7 +43,7 @@ CREATE TABLE IF NOT EXISTS songs (
 );
 
 -- ════════════════════════════════════════════════════════════
---  LETRAS
+--  LETRAS (Dados cruzados via Web Scraping / Genius API)
 -- ════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS lyrics (
     song_id         TEXT PRIMARY KEY,
@@ -84,8 +81,6 @@ SELECT
     s.title,
     a.name        AS artist_name,
     a.artist_id,
-    a.gender      AS artist_gender,
-    a.type        AS artist_type,
     s.genre,
     s.year,
     s.year / 10 * 10 AS decade,

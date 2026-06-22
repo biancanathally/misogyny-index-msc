@@ -296,10 +296,11 @@ def collect_lyrics_for_song(artist_name, song_title):
     if text and score >= 0.6:
         return text, "letras", score
 
-    # 2. Genius (fallback)
-    text, score = fetch_genius(artist_name, song_title)
-    if text and score >= 0.6:
-        return text, "genius", score
+    # REMOVER - Fallback Genius
+    # # 2. Genius (fallback)
+    # text, score = fetch_genius(artist_name, song_title)
+    # if text and score >= 0.6:
+    #     return text, "genius", score
 
     return None, None, 0.0
 
@@ -315,11 +316,12 @@ def main():
     )
     args = parser.parse_args()
 
-    genius_token = os.environ.get("GENIUS_ACCESS_TOKEN", "")
-    if not genius_token:
-        print("GENIUS_ACCESS_TOKEN nao definida — usando apenas Letras.mus.br")
-    else:
-        print("Genius configurado como fallback")
+    # REMOVER - Fallback Genius
+    # genius_token = os.environ.get("GENIUS_ACCESS_TOKEN", "")
+    # if not genius_token:
+    #     print("GENIUS_ACCESS_TOKEN nao definida — usando apenas Letras.mus.br")
+    # else:
+    #     print("Genius configurado como fallback")
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
