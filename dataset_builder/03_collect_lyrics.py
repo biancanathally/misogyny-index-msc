@@ -56,16 +56,13 @@ def slugify(text):
 
 
 def clean_title(title):
-    """Remove sufixos comuns que não fazem parte do título original."""
-    # Remover "- Ao Vivo", "- Remix", "- Mix", etc.
-    title = re.sub(
-        r"\s*-\s*(Ao Vivo|Remix|Mix|Live|Remaster(ed)?|Bonus Track).*$",
-        "",
-        title,
-        flags=re.IGNORECASE,
-    )
-    # Remover conteúdo entre parênteses no final
-    title = re.sub(r"\s*\([^)]*\)\s*$", "", title)
+    """Remove sufixos, feats, parts e conteúdo entre parênteses/colchetes."""
+    # Remover TUDO entre parênteses ou colchetes
+    title = re.sub(r"\s*[\(\[][^\)\]]*[\)\]]", "", title)
+    # Remover "- Ao Vivo", "- Remix", etc.
+    title = re.sub(r"\s*[-–]\s*(Ao Vivo|Remix|Mix|Live|Remaster(ed)?|Bonus Track|Acústico|Acustico).*$", "", title, flags=re.IGNORECASE)
+    # Remover feat/part/ft sem parênteses (ex: "Dally feat MC Biel")
+    title = re.sub(r"\s*(feat\.?|ft\.?|part\.?|featuring|participação|com)\s.*$", "", title, flags=re.IGNORECASE)
     return title.strip()
 
 
@@ -118,15 +115,12 @@ def fetch_letras(artist_name, song_title):
     best_score = 0
 
     for href, link_text in song_links:
-        score1 = (
-            fuzz.token_sort_ratio(normalize_text(song_title), normalize_text(link_text))
-            / 100
-        )
-        score2 = (
-            fuzz.token_sort_ratio(normalize_text(cleaned), normalize_text(link_text))
-            / 100
-        )
-        score = max(score1, score2)
+        cleaned_link = clean_title(link_text)
+        score1 = fuzz.token_sort_ratio(normalize_text(song_title), normalize_text(link_text)) / 100
+        score2 = fuzz.token_sort_ratio(normalize_text(cleaned), normalize_text(link_text)) / 100
+        score3 = fuzz.token_sort_ratio(normalize_text(cleaned), normalize_text(cleaned_link)) / 100
+        score = max(score1, score2, score3)
+        
         if score > best_score:
             best_score = score
             best_href = href
@@ -172,69 +166,6 @@ def fetch_letras(artist_name, song_title):
 
 
 # ==============================================================
-#  FONTE 2: Genius (fallback)
-# ==============================================================
-_genius_client = None
-
-
-def get_genius_client():
-    global _genius_client
-    if _genius_client is not None:
-        return _genius_client
-
-    token = os.environ.get("GENIUS_ACCESS_TOKEN", "")
-    if not token:
-        return None
-
-    try:
-        import lyricsgenius
-
-        # _genius_client = lyricsgenius.Genius(
-        #     token, verbose=False, timeout=15, retries=2,
-        #     remove_section_headers=True,
-        # )
-        _genius_client = lyricsgenius.Genius(token)
-        return _genius_client
-    except ImportError:
-        print("  lyricsgenius nao instalado — pip install lyricsgenius")
-        return None
-
-
-def fetch_genius(artist_name, song_title):
-    genius = get_genius_client()
-    if genius is None:
-        return None, 0.0
-
-    try:
-        song = genius.search_song(song_title, artist_name)
-    except Exception:
-        return None, 0.0
-
-    if not song or not song.lyrics:
-        return None, 0.0
-
-    text = song.lyrics.strip()
-    lines = text.split("\n")
-    if lines and lines[0].lower().endswith("lyrics"):
-        lines = lines[1:]
-    while lines and (
-        re.match(r"^\d*Embed$", lines[-1].strip()) or lines[-1].strip() == ""
-    ):
-        lines.pop()
-
-    text = "\n".join(lines).strip()
-    if len(text) < 20:
-        return None, 0.0
-
-    found_title = song.title if song.title else ""
-    score = (
-        fuzz.token_sort_ratio(normalize_text(song_title), normalize_text(found_title))
-        / 100
-    )
-    return text, max(score, 0.6)
-
-
-# ==============================================================
 #  ORQUESTRADOR
 # ==============================================================
 def collect_lyrics_for_song(artist_name, song_title):
@@ -242,12 +173,6 @@ def collect_lyrics_for_song(artist_name, song_title):
     text, score = fetch_letras(artist_name, song_title)
     if text and score >= 0.6:
         return text, "letras", score
-
-    # REMOVER - Fallback Genius
-    # # 2. Genius (fallback)
-    # text, score = fetch_genius(artist_name, song_title)
-    # if text and score >= 0.6:
-    #     return text, "genius", score
 
     return None, None, 0.0
 
@@ -262,14 +187,6 @@ def main():
         "--min-score", type=float, help="Score minimo de matching", default=0.6
     )
     args = parser.parse_args()
-
-    # REMOVER - Fallback Genius
-    # genius_token = os.environ.get("GENIUS_ACCESS_TOKEN", "")
-    # if not genius_token:
-    #     print("GENIUS_ACCESS_TOKEN nao definida — usando apenas Letras.mus.br")
-    # else:
-    #     print("Genius configurado como fallback")
-
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
@@ -300,45 +217,14 @@ def main():
 
         text, source, score = collect_lyrics_for_song(artist_name, title)
 
-        # if text and score >= args.min_score:
-        #     lines = [l for l in text.strip().split("\n") if l.strip()]
-        #     words = text.split()
-        if text and score >= args.min_score:
-            lines = [l for l in text.strip().split("\n") if l.strip()]
-            words = text.split()
-            # Rejeitar textos absurdamente longos (não é uma letra de música)
-            if len(words) > 1500:
-                text = None
-
-        #     cur.execute(
-        #         """INSERT OR REPLACE INTO lyrics
-        #            (song_id, text, source, n_words, n_lines, match_score)
-        #            VALUES (?,?,?,?,?,?)""",
-        #         (song_id, text.strip(), source, len(words), len(lines), round(score, 3))
-        #     )
-        #     conn.commit()
-        #     n_found += 1
-        #     print(f"✓ {source} (score={score:.2f}, {len(words)} palavras)")
-
-        # else:
-        #     n_failed += 1
-        #     print("✗ não encontrada")
-
-        if text and score >= args.min_score:
+        if text and score >= args.min_score and len(text.split()) <= 1500:
             lines = [l for l in text.strip().split("\n") if l.strip()]
             words = text.split()
             cur.execute(
                 """INSERT OR REPLACE INTO lyrics
                    (song_id, text, source, n_words, n_lines, match_score)
                    VALUES (?,?,?,?,?,?)""",
-                (
-                    song_id,
-                    text.strip(),
-                    source,
-                    len(words),
-                    len(lines),
-                    round(score, 3),
-                ),
+                (song_id, text.strip(), source, len(words), len(lines), round(score, 3)),
             )
             conn.commit()
             n_found += 1
